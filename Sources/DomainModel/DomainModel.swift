@@ -26,26 +26,28 @@ public struct Money {
         "CAN": 1.25
     ]
     
-    public init(amount: Int, currency: String){
-        guard Money.validCurrency.contains(currency) else {
+    public init(amount: Int, currency: String) {
+        if !Money.validCurrency.contains(currency) {
             fatalError("Invalid Currency")
         }
         self.amount = amount
         self.currency = currency
     }
+
     func convert(_ currency: String) -> Money {
-        guard Money.validCurrency.contains(currency) else {
+        if !Money.validCurrency.contains(currency) {
             fatalError("Invalid currency")
         }
 
-        guard let rateToUSD = Money.toUSD[self.currency],
-              let rateFromUSD = Money.fromUSD[currency] else {
+        if let to = Money.toUSD[self.currency],
+           let from = Money.fromUSD[currency] {
+            
+            let usd = Double(self.amount) * to
+            let converted = usd * from
+            return Money(amount: Int(converted.rounded()), currency: currency)
+        } else {
             fatalError("Missing Conversion Rate")
         }
-
-        let usd = Double(self.amount) * rateToUSD
-        let converted = usd * rateFromUSD
-        return Money(amount: Int(converted.rounded()), currency: currency)
     }
 
     func add(_ money: Money) -> Money {
@@ -166,29 +168,45 @@ public class Person {
 //
 public class Family {
     var fam: [Person]
+
     public init(spouse1: Person, spouse2: Person) {
-        guard spouse1.spouse == nil && spouse2.spouse == nil else{
-            fatalError("You can only be apart of one Family")
+        if spouse1.spouse != nil || spouse2.spouse != nil {
+            fatalError("You can only be part of one Family")
         }
-        
+
         spouse1.spouse = spouse2
         spouse2.spouse = spouse1
         self.fam = [spouse1, spouse2]
     }
-    
-    func haveChild(_ child: Person) -> Bool{
-        guard fam.contains(where: {$0.age >= 21 }) else {
+
+    func haveChild(_ child: Person) -> Bool {
+        var adult = false
+        for person in fam {
+            if person.age >= 21 {
+                adult = true
+                break
+            }
+        }
+
+        if adult {
+            fam.append(child)
+            return true
+        } else {
             return false
         }
-        fam.append(child)
-        return true
     }
-    
     func householdIncome(_ hoursWorked: Int? = nil) -> Int {
         let hours = hoursWorked ?? 2000
-        return fam
-            .compactMap { $0.job?.calculateIncome(hours) }
-            .reduce(0, +)
+        var totalIncome = 0
+
+        for person in fam {
+            if let job = person.job {
+                totalIncome += job.calculateIncome(hours)
+            }
+        }
+
+        return totalIncome
     }
+
 
 }
